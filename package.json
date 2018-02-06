@@ -22,18 +22,18 @@
   "homepage": "https://github.com/jsumners/hapi-cas#readme",
   "dependencies": {
     "abstract-logging": "^1.0.0",
-    "boom": "^5.1.0",
-    "dot-prop": "^4.1.1",
-    "hoek": "^4.2.0",
-    "joi": "^10.6.0",
+    "boom": "^7.1.1",
+    "dot-prop": "^4.2.0",
+    "hoek": "^5.0.3",
+    "joi": "^13.1.2",
     "simple-cas-interface": "^1.0.2"
   },
   "devDependencies": {
-    "hapi": "^16.4.3",
-    "hapi-easy-session": "^1.0.0",
-    "jsdoc-to-markdown": "^3.0.0",
-    "pino": "^4.7.1",
-    "request": "^2.81.0",
-    "standard": "^10.0.2"
+    "hapi": "^17.2.0",
+    "hapi-server-session": "^4.0.1",
+    "jsdoc-to-markdown": "^4.0.1",
+    "pino": "^4.10.4",
+    "request": "^2.83.0",
+    "standard": "^10.0.3"
   }
 }

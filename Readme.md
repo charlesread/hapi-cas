@@ -23,41 +23,52 @@ $ npm install --save --production hapi-cas
 A fully working example is provided as test case in the [test directory](test/).
 
 ```javascript
-const hapi = require('hapi');
-const server = new hapi.Server();
-server.connection({
+const hapi = require('hapi')
+
+const server = hapi.server({
   host: 'localhost',
   address: '127.0.0.1',
   port: 8080
-});
+})
 
-server.register(require('hapi-cas'), (err) => {
-    const options = {
-      casServerUrl: 'https://example.com/cas/',
-      localAppUrl: 'https://127.0.0.1:8080',
-      endPointPath: '/casHandler'
-    };
-    server.auth.strategy('casauth', 'cas', options);
-  }
-);
-
-// https://github.com/hapijs/discuss/issues/349
-setImmediate(() => {
-  server.route({
-    method: 'GET',
-    path: '/foo',
-    handler: function (request, reply) {
-      // "username" would have been set from the XML returned by
-      // the remote CAS server
-      return reply(null, `username = ${request.session.username}`);
-    },
-    config: {
-      auth: {
-        strategy: 'casauth'
+const plugins = [
+  {
+    plugin: require('hapi-server-session'),
+    options: {
+      cookie: {
+        isSecure: false
       }
     }
-  });
-})
+  },
+  {
+    plugin: require('hapi-cas'),
+    options: {
+      casServerUrl: 'https://example.com/cas/',
+      localAppUrl: 'http://127.0.0.1:8080',
+      endPointPath: '/casHandler'
+    }
+  }
+]
+
+;(async function () {
+  await server.register(plugins)
+  server.auth.strategy('casauth', 'cas', plugins[1].options)
+  server.route({
+    method: 'GET',
+    path: '/',
+    handler: async function (request, h) {
+      return request.session
+    },
+    config: {
+      auth: 'casauth'
+    }
+  })
+  await server.start()
+})()
+  .catch(function (err) {
+    console.error(err.stack)
+    process.exit(0)
+  })
 ```
 
 # License

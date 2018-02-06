@@ -111,19 +111,20 @@ function casPlugin (server, options) {
   const cas = new CAS(casOptions)
 
   function addHeaders (request, response) {
-    if (!response || !response.header || typeof response.header !== 'function') return response
+    if (!response) return response
+    // if (!response || !response.header || typeof response.header !== 'function') return response
     for (let h of _options.value.includeHeaders) {
       response.header(h, request.headers[h])
     }
     return response
   }
 
-  function gethandler (request, reply) {
+  async function gethandler (request, h) {
     const ticket = request.query.ticket
     if (!ticket) {
       log.trace('No ticket query parameter supplied to CAS handler end point')
       const boom = Boom.badRequest('Missing ticket parameter')
-      return addHeaders(request, reply(boom))
+      return addHeaders(request, h.response(boom))
     }
 
     return cas.validateServiceTicket(ticket).then(function (result) {
@@ -139,12 +140,12 @@ function casPlugin (server, options) {
         request.session.rawCas = result
       }
 
-      return addHeaders(request, reply(result)).redirect(redirectPath)
+      return addHeaders(request, h.response(result)).redirect(redirectPath)
     })
       .catch(function caught (error) {
         log.error('Service ticket validation failed: %s', error.message)
         log.debug(error.stack)
-        return addHeaders(request, reply(Boom.forbidden(error.message)))
+        return addHeaders(request, h.response(Boom.forbidden(error.message)))
       })
   }
 
@@ -162,13 +163,11 @@ function casPlugin (server, options) {
   })
 
   const scheme = {}
-  scheme.authenticate = function casAuth (request, reply) {
+  scheme.authenticate = async function casAuth (request, h) {
     const session = request.session
     if (!session) {
       log.trace('No session provider registered!')
-      return reply(Boom.notImplemented(
-        'hapi-cas requires a registered Hapi session provider'
-      ))
+      return Boom.notImplemented('hapi-cas requires a registered Hapi session provider')
     }
 
     const credentials = {
@@ -184,16 +183,16 @@ function casPlugin (server, options) {
 
     if (session.isAuthenticated) {
       log.trace('User authenticated by session lookup')
-      return reply.continue({credentials: credentials})
+      return h.authenticated({credentials})
     }
 
     log.trace('Redirecting auth to: %s', cas.loginUrl)
     session.requestPath = request.path
     return addHeaders(
       request,
-      reply('cas redirect', null, {credentials: credentials})
+      h.response('cas redirect')
     )
-      .redirect(cas.loginUrl)
+      .redirect(cas.loginUrl).takeover()
   }
 
   return scheme
@@ -205,14 +204,10 @@ function casPlugin (server, options) {
  *
  * @param {object} server A Hapi server instance.
  * @param {object} options A Hapi plugin registration options object.
- * @param {function} next The Hapi registration finished callback function.
  * @returns {function} The registration finished callback function.
  */
-exports.register = function (server, options, next) {
+exports.register = async function (server, options) {
   server.auth.scheme('cas', casPlugin)
-  return next()
 }
 
-module.exports.register.attributes = {
-  pkg: require(path.join(__dirname, 'package.json'))
-}
+exports.pkg = require(path.join(__dirname, 'package.json'))
